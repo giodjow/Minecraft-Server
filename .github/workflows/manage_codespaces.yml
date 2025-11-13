@@ -15,16 +15,15 @@ jobs:
   # JOB #1: LIGAR O CODESPACE
   #=======================================================
   start-codespace:
-    # Roda no agendamento 'ligar' OU no clique manual 'workflow_dispatch'
     if: github.event.schedule == '0 23 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - name: Autenticar com GitHub CLI
+      # O PASSO DE LOGIN FOI REMOVIDO
+      
+      - name: Ação Ligar Codespace
+        # Injetamos o token diretamente neste passo
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
-        run: gh auth login --with-token <<< "$GH_TOKEN"
-
-      - name: Ação Ligar Codespace
         run: |
           echo "Procurando codespace para este repositório (${{ github.repository }})..."
           CODESPACE_TO_START=$(gh codespace list --repo ${{ github.repository }} --json name,state | jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
@@ -40,16 +39,15 @@ jobs:
   # JOB #2: DESLIGAR O CODESPACE
   #=======================================================
   stop-codespace:
-    # Roda APENAS no agendamento 'parar'
     if: github.event.schedule == '0 5 * * *'
     runs-on: ubuntu-latest
     steps:
-      - name: Autenticar com GitHub CLI
+      # O PASSO DE LOGIN FOI REMOVIDO
+      
+      - name: Ação Parar Codespaces
+        # Injetamos o token diretamente neste passo
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
-        run: gh auth login --with-token <<< "$GH_TOKEN"
-
-      - name: Ação Parar Codespaces
         run: |
           echo "Procurando e parando todos os codespaces ativos..."
           gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
