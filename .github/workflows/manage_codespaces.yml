@@ -14,42 +14,20 @@ on:
     - cron: '0 23 * * *'
 
 jobs:
-  manage-codespaces:
+  #=======================================================
+  # JOB #1: LIGAR O CODESPACE
+  #=======================================================
+  start-codespace:
+    # Esta linha garante que este job SÓ rode no horário de ligar
+    if: github.event.schedule == '0 23 * * *'
     runs-on: ubuntu-latest
     steps:
-      # Decide qual ação tomar baseado no 'cron' que disparou o job
-      - name: Definir Ação (Parar)
-        if: contains(github.event.schedule, '0 5 * * *')
-        run: echo "ACTION_TO_TAKE=stop" >> $GITHUB_ENV
-      
-      - name: Definir Ação (Ligar)
-        if: contains(github.event.schedule, '0 23 * * *')
-        run: echo "ACTION_TO_TAKE=start" >> $GITHUB_ENV
-
-      # Login no GitHub CLI usando o Token que você salvou
       - name: Autenticar com GitHub CLI
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: gh auth login --with-token <<< "$GH_TOKEN"
 
-      # --- AÇÃO DE PARAR ---
-      # Este script para TODOS os seus codespaces que estiverem rodando
-      - name: Ação: Parar Codespaces
-        if: env.ACTION_TO_TAKE == 'stop'
-        run: |
-          echo "Procurando e parando todos os codespaces ativos..."
-          gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
-          while read -r codesa_name; do
-            echo "Parando $codesa_name..."
-            gh codespace stop -c "$codesa_name"
-          done
-          echo "Processo de parada concluído."
-
-      # --- AÇÃO DE LIGAR ---
-      # Este script liga o primeiro codespace que encontrar
-      # associado a ESTE repositório.
       - name: Ação: Ligar Codespace
-        if: env.ACTION_TO_TAKE == 'start'
         run: |
           echo "Procurando codespace para este repositório (${{ github.repository }})..."
           CODESPACE_TO_START=$(gh codespace list --repo ${{ github.repository }} --json name,state | jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
@@ -60,3 +38,26 @@ jobs:
             echo "Iniciando $CODESPACE_TO_START..."
             gh codespace start -c "$CODESPACE_TO_START"
           fi
+
+  #=======================================================
+  # JOB #2: DESLIGAR O CODESPACE
+  #=======================================================
+  stop-codespace:
+    # Esta linha garante que este job SÓ rode no horário de parar
+    if: github.event.schedule == '0 5 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Autenticar com GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: gh auth login --with-token <<< "$GH_TOKEN"
+
+      - name: Ação: Parar Codespaces
+        run: |
+          echo "Procurando e parando todos os codespaces ativos..."
+          gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
+          while read -r codesa_name; do
+            echo "Parando $codesa_name..."
+            gh codespace stop -c "$codesa_name"
+          done
+          echo "Processo de parada concluído."
