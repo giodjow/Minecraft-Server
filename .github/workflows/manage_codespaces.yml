@@ -28,9 +28,9 @@ jobs:
           if [ -z "$CODESPACE_TO_START" ]; then
             echo "Nenhum codespace parado encontrado para este repositório."
           else
-            echo "Iniciando $CODESPACE_TO_START..."
-            # --- CORREÇÃO AQUI (trocamos 'start' por 'code') ---
-            gh codespace code "$CODESPACE_TO_START"
+            echo "Codespace $CODESPACE_TO_START encontrado. Iniciando..."
+            # --- CORREÇÃO AQUI (removemos o argumento) ---
+            gh codespace code
           fi
 
   #=======================================================
@@ -48,7 +48,7 @@ jobs:
           gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
           while read -r codesa_name; do
             echo "Parando $codesa_name..."
-            # Este comando está correto, 'stop' existe na lista
+            # O comando 'stop' precisa do nome, então está correto
             gh codespace stop "$codesa_name"
           done
           echo "Processo de parada concluído."
