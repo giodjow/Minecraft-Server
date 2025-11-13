@@ -18,6 +18,11 @@ jobs:
     if: github.event.schedule == '0 23 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Atualizar GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+      
       - name: Ação Ligar Codespace
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
@@ -28,9 +33,9 @@ jobs:
           if [ -z "$CODESPACE_TO_START" ]; then
             echo "Nenhum codespace parado encontrado para este repositório."
           else
-            echo "Codespace $CODESPACE_TO_START encontrado. Iniciando..."
-            # --- CORREÇÃO AQUI (removemos o argumento) ---
-            gh codespace code
+            echo "Iniciando $CODESPACE_TO_START..."
+            # --- CORREÇÃO AQUI (Usando o comando MODERNO) ---
+            gh codespace start --codespace "$CODESPACE_TO_START"
           fi
 
   #=======================================================
@@ -40,6 +45,11 @@ jobs:
     if: github.event.schedule == '0 5 * * *'
     runs-on: ubuntu-latest
     steps:
+      - name: Atualizar GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
       - name: Ação Parar Codespaces
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
@@ -48,7 +58,7 @@ jobs:
           gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
           while read -r codesa_name; do
             echo "Parando $codesa_name..."
-            # O comando 'stop' precisa do nome, então está correto
-            gh codespace stop "$codesa_name"
+            # --- CORREÇÃO AQUI (Usando o comando MODERNO) ---
+            gh codespace stop --codespace "$codesa_name"
           done
           echo "Processo de parada concluído."
