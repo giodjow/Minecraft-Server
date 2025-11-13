@@ -27,7 +27,7 @@ jobs:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: gh auth login --with-token <<< "$GH_TOKEN"
 
-      - name: Ação: Ligar Codespace
+      - name: Ação Ligar Codespace
         run: |
           echo "Procurando codespace para este repositório (${{ github.repository }})..."
           CODESPACE_TO_START=$(gh codespace list --repo ${{ github.repository }} --json name,state | jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
@@ -52,7 +52,7 @@ jobs:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: gh auth login --with-token <<< "$GH_TOKEN"
 
-      - name: Ação: Parar Codespaces
+      - name: Ação Parar Codespaces
         run: |
           echo "Procurando e parando todos os codespaces ativos..."
           gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
