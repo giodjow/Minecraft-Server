@@ -2,11 +2,12 @@ name: Gerenciador de Codespaces
 
 on:
   schedule:
-    # ... (os seus crons de parar e ligar continuam aqui, iguais)
+    # Para parar às 02:00 (Brasília), agende para 05:00 UTC
     - cron: '0 5 * * *'
-    - cron: '0 23 * * *' #<- Certifique-se que o 6 não está mais aqui
+    # Para ligar às 20:00 (Brasília), agende para 23:00 UTC
+    - cron: '0 23 * * *'
   
-  # ADICIONE ESTA LINHA:
+  # Gatilho para teste manual
   workflow_dispatch:
 
 jobs:
@@ -14,12 +15,46 @@ jobs:
   # JOB #1: LIGAR O CODESPACE
   #=======================================================
   start-codespace:
-    
-    # MUDE ESTA LINHA 'if:':
+    # Roda no agendamento 'ligar' OU no clique manual 'workflow_dispatch'
     if: github.event.schedule == '0 23 * * *' || github.event_name == 'workflow_dispatch'
-    
-    # O resto do job continua igual...
     runs-on: ubuntu-latest
     steps:
       - name: Autenticar com GitHub CLI
-      # ... etc ...
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: gh auth login --with-token <<< "$GH_TOKEN"
+
+      - name: Ação: Ligar Codespace
+        run: |
+          echo "Procurando codespace para este repositório (${{ github.repository }})..."
+          CODESPACE_TO_START=$(gh codespace list --repo ${{ github.repository }} --json name,state | jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
+          
+          if [ -z "$CODESPACE_TO_START" ]; then
+            echo "Nenhum codespace parado encontrado para este repositório."
+          else
+            echo "Iniciando $CODESPACE_TO_START..."
+            gh codespace start -c "$CODESPACE_TO_START"
+          fi
+
+  #=======================================================
+  # JOB #2: DESLIGAR O CODESPACE
+  #=======================================================
+  stop-codespace:
+    # Roda APENAS no agendamento 'parar'
+    if: github.event.schedule == '0 5 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Autenticar com GitHub CLI
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: gh auth login --with-token <<< "$GH_TOKEN"
+
+      - name: Ação: Parar Codespaces
+        run: |
+          echo "Procurando e parando todos os codespaces ativos..."
+          gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
+          while read -r codesa_name; do
+            echo "Parando $codesa_name..."
+            gh codespace stop -c "$codesa_name"
+          done
+          echo "Processo de parada concluído."
