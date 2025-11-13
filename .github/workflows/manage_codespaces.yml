@@ -16,7 +16,7 @@ on:
 
     # Para parar às 02:00 (Brasília), agende para 05:00 UTC
 
-    - cron: '0 5 * * *'
+    - cron: '0 5 5 * *'
 
 
     # Para ligar às 20:00 (Brasília), agende para 23:00 UTC
