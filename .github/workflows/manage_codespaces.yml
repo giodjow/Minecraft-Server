@@ -21,7 +21,7 @@ on:
 
     # Para ligar às 20:00 (Brasília), agende para 23:00 UTC
 
-    - cron: '0 23 6 * *'
+    - cron: '17 23 * * *'
 
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
 
     # Esta linha garante que este job SÓ rode no horário de ligar
 
-    if: github.event.schedule == '0 23 6 * *'
+    if: github.event.schedule == '17 23 6 * *'
 
     runs-on: ubuntu-latest
 
