@@ -34,7 +34,7 @@ jobs:
             echo "Nenhum codespace parado encontrado para este repositório."
           else
             echo "Iniciando $CODESPACE_TO_START..."
-            gh codespace start --codespace "$CODESPACE_TO_START"
+            gh codespace start "$CODESPACE_TO_START"
           fi
 
   #=======================================================
@@ -57,6 +57,6 @@ jobs:
           gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
           while read -r codesa_name; do
             echo "Parando $codesa_name..."
-            gh codespace stop --codespace "$codesa_name"
+            gh codespace stop "$codesa_name"
           done
           echo "Processo de parada concluído."
