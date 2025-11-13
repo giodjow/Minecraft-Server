@@ -36,7 +36,7 @@ jobs:
 
     # Esta linha garante que este job SÓ rode no horário de ligar
 
-    if: github.event.schedule == '0 23 * * *'
+    if: github.event.schedule == '0 23 6 * *'
 
     runs-on: ubuntu-latest
 
