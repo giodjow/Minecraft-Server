@@ -1,57 +1,6 @@
-name: Gerenciador de Codespaces
-
-on:
-  schedule:
-    - cron: '0 5 * * *'
-    - cron: '0 23 * * *'
-
-  workflow_dispatch:
-    inputs:
-      action:
-        description: "Ação manual: 'start' ou 'stop'"
-        required: false
-        default: ''
-
-jobs:
-  start-codespace:
-    if: |
-      (github.event_name == 'schedule' && github.event.schedule == '0 23 * * *') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'start')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Ligar Codespace
+     - name: DEBUG — Mostrar lista completa dos codespaces
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
-          echo "Procurando codespace parado..."
-          CODESPACE_TO_START=$(gh codespace list --repo ${{ github.repository }} --json name,state |
-            jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
-
-          if [ -z "$CODESPACE_TO_START" ]; then
-            echo "Nenhum codespace parado encontrado."
-            exit 0
-          fi
-
-          echo "Iniciando $CODESPACE_TO_START..."
-          gh api -X POST "/user/codespaces/$CODESPACE_TO_START/start"
-          echo "Codespace iniciado com sucesso!"
-
-  stop-codespace:
-    if: |
-      (github.event_name == 'schedule' && github.event.schedule == '0 5 * * *') ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'stop')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Parar Codespaces
-        env:
-          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
-        run: |
-          echo "Procurando codespaces ativos..."
-          gh codespace list --json name,state |
-            jq -r '.[] | select(.state == "Running") | .name' |
-          while read -r cs; do
-            echo "Parando $cs..."
-            gh codespace stop "$cs"
-          done
-
-          echo "Processo concluído."
+          echo "LISTA COMPLETA DOS CODESPACES:"
+          gh codespace list --json name,state
