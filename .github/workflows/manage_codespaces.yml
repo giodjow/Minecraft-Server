@@ -2,8 +2,8 @@ name: Gerenciador de Codespaces
 
 on:
   schedule:
-    - cron: '0 5 * * *'   # Stop 02:00 Brasília == 05:00 UTC
-    - cron: '0 23 * * *'  # Start 20:00 Brasília == 23:00 UTC
+    - cron: '0 5 * * *'
+    - cron: '0 23 * * *'
 
   workflow_dispatch:
     inputs:
@@ -13,9 +13,6 @@ on:
         default: ''
 
 jobs:
-  #===================================
-  # JOB #1 — LIGAR
-  #===================================
   start-codespace:
     if: |
       (github.event_name == 'schedule' && github.event.schedule == '0 23 * * *') ||
@@ -36,12 +33,9 @@ jobs:
           fi
 
           echo "Iniciando $CODESPACE_TO_START..."
-          gh codespace start "$CODESPACE_TO_START"
-          echo "Codespace iniciado!"
+          gh api -X POST "/user/codespaces/$CODESPACE_TO_START/start"
+          echo "Codespace iniciado com sucesso!"
 
-  #===================================
-  # JOB #2 — DESLIGAR
-  #===================================
   stop-codespace:
     if: |
       (github.event_name == 'schedule' && github.event.schedule == '0 5 * * *') ||
@@ -53,7 +47,8 @@ jobs:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
           echo "Procurando codespaces ativos..."
-          gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' |
+          gh codespace list --json name,state |
+            jq -r '.[] | select(.state == "Running") | .name' |
           while read -r cs; do
             echo "Parando $cs..."
             gh codespace stop "$cs"
