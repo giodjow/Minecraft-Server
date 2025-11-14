@@ -36,6 +36,14 @@ jobs:
           gh api -X POST "/user/codespaces/$CODESPACE_TO_START/start"
           echo "Codespace iniciado com sucesso!"
 
+          echo "Aguardando Codespace iniciar..."
+          sleep 15   # aguarda alguns segundos para garantir que está pronto
+
+          echo "Executando script dentro do Codespace..."
+          gh codespace ssh -c "bash /workspaces/Minecraft-Server/minecraft/run_crafty.sh" \
+          --codespace "$CODESPACE_TO_START"
+
+          echo "Script iniciado com sucesso!"
   stop-codespace:
     if: |
       (github.event_name == 'schedule' && github.event.schedule == '0 5 * * *') ||
