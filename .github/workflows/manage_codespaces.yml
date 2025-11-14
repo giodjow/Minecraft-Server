@@ -42,7 +42,8 @@ jobs:
           echo "Executando script dentro do Codespace..."
           gh codespace ssh -c "$CODESPACE_TO_START" -- << 'EOF'
           nohup playit > /workspaces/playit.log 2>&1 &
-          nohup bash /workspaces/Minecraft-Server/minecraft/run_crafty.sh > /workspaces/crafty.log 2>&1 & EOF
+          nohup bash /workspaces/Minecraft-Server/minecraft/run_crafty.sh > /workspaces/crafty.log 2>&1 &
+          EOF
           echo "Script iniciado com sucesso!"
   stop-codespace:
     if: |
