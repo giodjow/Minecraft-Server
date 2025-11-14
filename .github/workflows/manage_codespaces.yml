@@ -41,7 +41,7 @@ jobs:
           sudo apt-get install -y gh jq
           gh --version
 
-      - name: Ação: Ligar Codespace
+      - name: Ação Ligar Codespace
         env:
           # A autenticação é passada diretamente para o comando
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
@@ -79,7 +79,7 @@ jobs:
           sudo apt-get install -y gh jq
           gh --version
 
-      - name: Ação: Parar Codespaces
+      - name: Ação Parar Codespaces
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
