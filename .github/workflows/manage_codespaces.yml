@@ -46,13 +46,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
-          echo "Procurando codespaces ativos..."
+          echo "Verificando estado do Codespace: $cs"
           gh codespace list --json name,state \
             | jq -r '.[] | select(.state == "Running") | .name' \
             | while read -r cs; do
             echo "Parando $cs..."
             gh codespace stop "$cs"
-            echo "Verificando estado de $cs"
           done
 
           echo "Processo concluído."
