@@ -1,1 +1,0 @@
-gh codespace list --json name,state | jq -r '.[] | select(.name=="<nome_do_cs>")'
