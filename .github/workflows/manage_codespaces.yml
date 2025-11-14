@@ -37,19 +37,21 @@ jobs:
           echo "Codespace iniciado com sucesso!"
 
   stop-codespace:
-  if: |
-    (github.event_name == 'schedule' && github.event.schedule == '0 5 * * *') ||
-    (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'stop')
-  runs-on: ubuntu-latest
-  steps:
-    - name: Parar Codespaces
-      env:
-        GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
-      run: |
-        echo "Procurando codespaces ativos..."
-        gh codespace list --json name,state \
-          | jq -r '.[] | select(.state == "Running") | .name' \
-          | while read -r cs; do
-              echo "Parando $cs..."
-              gh codespace stop "$cs"
-            done
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 5 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'stop')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parar Codespaces
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          echo "Procurando codespaces ativos..."
+          gh codespace list --json name,state |
+            jq -r '.[] | select(.state == "Running") | .name' |
+          while read -r cs; do
+            echo "Parando $cs..."
+            gh codespace stop "$cs"
+          done
+
+          echo "Processo concluído."
