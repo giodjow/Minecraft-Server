@@ -47,9 +47,9 @@ jobs:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
           echo "Procurando codespaces ativos..."
-          gh codespace list --json name,state |
-            jq -r '.[] | select(.state == "Running") | .name' |
-          while read -r cs; do
+          gh codespace list --json name,state \
+            | jq -r '.[] | select(.state == "Running") | .name' \
+            | while read -r cs; do
             echo "Parando $cs..."
             gh codespace stop "$cs"
           done
