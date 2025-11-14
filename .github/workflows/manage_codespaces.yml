@@ -1,57 +1,64 @@
-name: Diagnóstico do GitHub CLI
+name: Gerenciador de Codespaces
 
 on:
+  schedule:
+    # Para parar às 02:00 (Brasília), agende para 05:00 UTC
+    - cron: '0 5 * * *'
+    # Para ligar às 20:00 (Brasília), agende para 23:00 UTC
+    - cron: '0 23 * * *'
+  
   # Gatilho para teste manual
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Ação manual: 'start' ou 'stop'"
+        required: false
+        default: ''
 
 jobs:
-  debug-gh-environment:
+  #=======================================================
+  # JOB #1: LIGAR O CODESPACE
+  #=======================================================
+  start-codespace:
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 23 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'start')
     runs-on: ubuntu-latest
     steps:
-      
-      - name: 1. Qual 'gh' esta no PATH?
+      - name: Ação Ligar Codespace (via SSH)
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
-          echo "O sistema esta usando este 'gh':"
-          which gh
-          echo "-----------------------------------"
+          echo "Procurando codespace parado para este repositório (${{ github.repository }})..."
+          CODESPACE_TO_START=$(gh codespace list --repo ${{ github.repository }} --json name,state | jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
           
-      - name: 2. Qual a versao REAL desse 'gh'?
-        run: |
-          echo "A versao reportada e:"
-          gh --version
-          echo "-----------------------------------"
+          if [ -z "$CODESPACE_TO_START" ]; then
+            echo "Nenhum codespace parado encontrado para este repositório."
+          else
+            echo "Iniciando $CODESPACE_TO_START..."
+            # TRUQUE: Usamos 'ssh' com um comando 'echo' para forçar o start
+            # A sintaxe é 'gh codespace ssh <nome>' (sem flag), como aprendemos com os erros
+            gh codespace ssh "$CODESPACE_TO_START" -- "echo 'Workflow: Codespace iniciado com sucesso'"
+          fi
 
-      - name: 3. Quais comandos o 'gh codespace' realmente tem?
+  #=======================================================
+  # JOB #2: DESLIGAR O CODESPACE
+  #=======================================================
+  stop-codespace:
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 5 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'stop')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ação Parar Codespaces
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
-          echo "Os comandos disponiveis sao:"
-          # Usamos 'gh codespace --help' para obter a lista
-          gh codespace --help
-          echo "-----------------------------------"
-
-      - name: 4. Tentativa de rodar o update (Instalacao Forcada)
-        run: |
-          echo "Iniciando a atualizacao..."
-          sudo apt-get update -y
-          # Esta é a instalação oficial via 'curl' que tentamos antes
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt-get update -y
-          sudo apt-get install -y gh
-          echo "Atualizacao concluida."
-          echo "-----------------------------------"
-          
-      - name: 5. Qual o 'gh' DEPOIS do update?
-        run: |
-          echo "DEPOIS do update, o sistema usa este 'gh':"
-          which gh
-          echo "A versao DEPOIS do update e:"
-          gh --version
-          echo "-----------------------------------"
-
-      - name: 6. O que o 'gh' (novo) sabe sobre o comando 'start'?
-        run: |
-          echo "Pedindo ajuda para o comando 'gh codespace start'..."
-          # Se o 'gh' foi atualizado, este comando vai funcionar
-          # Se nao, ele vai falhar (o que e uma resposta)
-          gh codespace start --help
+          echo "Procurando e parando todos os codespaces ativos..."
+          gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
+          while read -r codesa_name; do
+            echo "Parando $codesa_name..."
+            # O comando 'stop' existe na lista e usa a sintaxe sem flag
+            gh codespace stop "$codesa_name"
+          done
+          echo "Processo de parada concluído."
