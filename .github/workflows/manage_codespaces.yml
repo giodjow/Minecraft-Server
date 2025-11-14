@@ -1,6 +1,84 @@
-          - name: DEBUG — Mostrar lista completa dos codespaces
-               env:
-                    GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
-               run: |
-                    echo "LISTA COMPLETA DOS CODESPACES:"
-                    gh codespace list --json name,state
+name: Gerenciador de Codespaces
+
+# Gatilhos
+on:
+  schedule:
+    # Fechar às 02:00 (Brasília) -> 05:00 UTC
+    - cron: '0 5 * * *'
+    # Abrir às 20:00 (Brasília) -> 23:00 UTC
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Ação manual: 'start' ou 'stop'"
+        required: false
+        default: ''
+
+# Permissões necessárias para usar a API de Codespaces (se quiser usar GITHUB_TOKEN em vez de PAT).
+permissions:
+  codespaces: write
+
+jobs:
+  # =======================================================
+  # JOB 1: LIGAR O CODESPACE (usa gh api - funciona em runners com CLI antiga)
+  # =======================================================
+  start-codespace:
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 23 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'start')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ligar Codespace
+        # Recomendo usar um PAT com permissões codespaces (se não usar GITHUB_TOKEN)
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          echo "Procurando codespace parado para este repositório (${{ github.repository }})..."
+          CODESPACE_TO_START=$(gh codespace list --repo "${{ github.repository }}" --json name,state |
+            jq -r '.[] | select(.state != "Running" and .state != "Available") | .name' |
+            head -n 1)
+
+          # Se você prefere iniciar qualquer codespace que NÃO esteja 'Shutdown'/'Stopped',
+          # comente a expressão acima e use:
+          # jq -r '.[] | select(.state != "Shutdown" and .state != "Stopped") | .name'
+
+          if [ -z "$CODESPACE_TO_START" ]; then
+            echo "Nenhum codespace parado encontrado."
+            exit 0
+          fi
+
+          echo "Iniciando $CODESPACE_TO_START..."
+          # Usa a API diretamente (funciona mesmo com gh CLI antiga no runner)
+          gh api -X POST "/user/codespaces/$CODESPACE_TO_START/start"
+          echo "Codespace iniciado!"
+
+  # =======================================================
+  # JOB 2: DESLIGAR O CODESPACE
+  # =======================================================
+  stop-codespace:
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 5 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'stop')
+    runs-on: ubuntu-latest
+    steps:
+      - name: DEBUG — Mostrar lista completa dos codespaces
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          echo "LISTA COMPLETA DOS CODESPACES:"
+          gh codespace list --json name,state
+
+      - name: Parar Codespaces
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          echo "Procurando codespaces nos estados Running ou Available..."
+          gh codespace list --json name,state |
+            jq -r '.[] | select(.state == "Running" or .state == "Available") | .name' |
+          while read -r cs; do
+            echo "Parando $cs..."
+            gh codespace stop "$cs" || echo "Falha ao parar $cs (continuando)..."
+          done
+
+          echo "Processo concluído."
+
