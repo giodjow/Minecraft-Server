@@ -40,10 +40,9 @@ jobs:
           sleep 15   # aguarda alguns segundos para garantir que está pronto
 
           echo "Executando script dentro do Codespace..."
-          gh codespace ssh --codespace "$CODESPACE_TO_START" -- -tt "
-            nohup playit > /workspaces/playit.log 2>&1 &
-            nohup bash /workspaces/Minecraft-Server/minecraft/run_crafty.sh > /workspaces/crafty.log 2>&1 &
-          "
+          gh codespace ssh --codespace "$CODESPACE_TO_START" -- -tt
+            "playit &
+            bash /workspaces/Minecraft-Server/minecraft/run_crafty.sh > /workspaces/crafty.log 2>&1"
           echo "Script iniciado com sucesso!"
   stop-codespace:
     if: |
