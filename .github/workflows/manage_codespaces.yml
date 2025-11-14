@@ -2,65 +2,105 @@ name: Gerenciador de Codespaces
 
 on:
   schedule:
-    # Para parar às 02:00 (Brasília), agende para 05:00 UTC
     - cron: '0 5 * * *'
-    # Para ligar às 20:00 (Brasília), agende para 23:00 UTC
     - cron: '0 23 * * *'
-  
-  # Gatilho para teste manual
   workflow_dispatch:
+    inputs:
+      action:
+        description: 'start ou stop (opcional). Se não informado, a execução segue o horário UTC.'
+        required: false
+        default: ''
 
 jobs:
-  #=======================================================
-  # JOB #1: LIGAR O CODESPACE
-  #=======================================================
   start-codespace:
-    if: github.event.schedule == '0 23 * * *' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      # PASSO 1: FORÇA A ATUALIZAÇÃO DA FERRAMENTA
-      - name: Atualizar GitHub CLI
+      - name: Verificar se deve executar (início)
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ github.event.inputs.action }}" ] && [ "${{ github.event.inputs.action }}" != "start" ]; then
+              echo "workflow_dispatch com action diferente de 'start' — pulando."
+              exit 0
+            fi
+            echo "Execução manual detectada — procedendo com start."
+          else
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" != "23" ]; then
+              echo "Horário UTC atual: $HOUR — não é 23. Pulando job de start."
+              exit 0
+            fi
+            echo "Horário 23 UTC — iniciando job de start."
+          fi
+
+      - name: Instalar gh e jq
         run: |
           sudo apt-get update
-          sudo apt-get install -y gh
-      
-      # PASSO 2: USA O COMANDO MODERNO (QUE AGORA VAI FUNCIONAR)
-      - name: Ação Ligar Codespace
+          sudo apt-get install -y gh jq
+
+      - name: Autenticar gh
         env:
-          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+          CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
         run: |
-          echo "Procurando codespace para este repositório (${{ github.repository }})..."
-          CODESPACE_TO_START=$(gh codespace list --repo ${{ github.repository }} --json name,state | jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
-          
+          if [ -z "${CODESPACE_PAT}" ]; then
+            echo "Segredo CODESPACE_PAT não definido. Abortando."
+            exit 1
+          fi
+          echo "${CODESPACE_PAT}" | gh auth login --with-token
+
+      - name: Ação Ligar Codespace
+        run: |
+          echo "Procurando codespace parado para este repositório (${{ github.repository }})..."
+          CODESPACE_TO_START=$(gh codespace list --repo "${{ github.repository }}" --json name,state | jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
           if [ -z "$CODESPACE_TO_START" ]; then
             echo "Nenhum codespace parado encontrado para este repositório."
           else
             echo "Iniciando $CODESPACE_TO_START..."
-            gh codespace start --codespace "$CODESPACE_TO_START"
+            gh codespace start -c "$CODESPACE_TO_START"
           fi
 
-  #=======================================================
-  # JOB #2: DESLIGAR O CODESPACE
-  #=======================================================
   stop-codespace:
-    if: github.event.schedule == '0 5 * * *'
     runs-on: ubuntu-latest
     steps:
-      # PASSO 1: FORÇA A ATUALIZAÇÃO DA FERRAMENTA
-      - name: Atualizar GitHub CLI
+      - name: Verificar se deve executar (parada)
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ github.event.inputs.action }}" ] && [ "${{ github.event.inputs.action }}" != "stop" ]; then
+              echo "workflow_dispatch com action diferente de 'stop' — pulando."
+              exit 0
+            fi
+            echo "Execução manual detectada — procedendo com stop."
+          else
+            HOUR=$(date -u +%H)
+            if [ "$HOUR" != "05" ] && [ "$HOUR" != "5" ]; then
+              echo "Horário UTC atual: $HOUR — não é 05. Pulando job de stop."
+              exit 0
+            fi
+            echo "Horário 05 UTC — iniciando job de stop."
+          fi
+
+      - name: Instalar gh e jq
         run: |
           sudo apt-get update
-          sudo apt-get install -y gh
+          sudo apt-get install -y gh jq
 
-      # PASSO 2: USA O COMANDO MODERNO
-      - name: Ação Parar Codespaces
+      - name: Autenticar gh
         env:
-          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+          CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          if [ -z "${CODESPACE_PAT}" ]; then
+            echo "Segredo CODESPACE_PAT não definido. Abortando."
+            exit 1
+          fi
+          echo "${CODESPACE_PAT}" | gh auth login --with-token
+
+      - name: Ação Parar Codespaces
         run: |
           echo "Procurando e parando todos os codespaces ativos..."
           gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
           while read -r codesa_name; do
-            echo "Parando $codesa_name..."
-            gh codespace stop --codespace "$codesa_name"
+            if [ -n "$codesa_name" ]; then
+              echo "Parando $codesa_name..."
+              gh codespace stop -c "$codesa_name"
+            fi
           done
           echo "Processo de parada concluído."
