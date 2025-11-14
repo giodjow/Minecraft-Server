@@ -49,8 +49,8 @@ jobs:
           gh codespace list --json name,state \
             | jq -r '.[] | select(.state == "Available") | .name' \
             | while read -r cs; do
-            echo "Parando $cs..."
-            gh codespace stop "$cs"
-          done
+              echo "Parando $cs..."
+              gh codespace stop "$cs"
+            done
 
           echo "Processo concluído."
