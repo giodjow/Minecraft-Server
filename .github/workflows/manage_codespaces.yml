@@ -52,7 +52,7 @@ jobs:
             | while read -r cs; do
             echo "Parando $cs..."
             gh codespace stop "$cs"
-            gh codespace list --json name,state | jq -r '.[] | select(.name=="<nome_do_cs>")'
+            echo "Verificando estado de $cs"
           done
 
           echo "Processo concluído."
