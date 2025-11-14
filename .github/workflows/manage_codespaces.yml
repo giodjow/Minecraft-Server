@@ -55,7 +55,7 @@ jobs:
             echo "Nenhum codespace parado encontrado para este repositório."
           else
             echo "Iniciando $CODESPACE_TO_START..."
-            gh codespace start code "$CODESPACE_TO_START"
+            gh codespace start -code "$CODESPACE_TO_START"
           fi
 
   stop-codespace:
