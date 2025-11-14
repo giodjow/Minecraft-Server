@@ -46,11 +46,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
-          gh codespace list --json name,state \
-            | jq -r '.[] | select(.state == "Available") | .name' \
-            | while read -r cs; do
-              echo "Parando $cs..."
-              gh codespace stop "$cs"
-            done
+          echo "Listando Codespaces..."
+          CODESPACES=$(gh codespace list --json name,state \
+            | jq -r '.[] | select(.state=="Available" or .state=="Running") | .name')
+
+          echo "Encontrados:"
+          echo "$CODESPACES"
+
+          if [ -z "$CODESPACES" ]; then
+            echo "Nenhum Codespace elegível para stop."
+            exit 0
+          fi
+
+          for cs in $CODESPACES; do
+            echo "Parando $cs..."
+            gh codespace stop --codespace "$cs"
+          done
 
           echo "Processo concluído."
