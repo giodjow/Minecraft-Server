@@ -1,6 +1,5 @@
-     - name: DEBUG — Mostrar lista completa dos codespaces
-        env:
-          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
-        run: |
-          echo "LISTA COMPLETA DOS CODESPACES:"
-          gh codespace list --json name,state
+          - name: DEBUG — Mostrar lista completa dos codespaces
+               env GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+               run: |
+                    echo "LISTA COMPLETA DOS CODESPACES:"
+                    gh codespace list --json name,state
