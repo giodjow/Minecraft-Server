@@ -46,7 +46,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
-          echo "Verificando estado do Codespace: $cs"
+          echo "Debug - Lista completa:"
+          gh codespace list --json name,state
+          echo "Debug - Filtrados como Running:"
+          gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name'
           gh codespace list --json name,state \
             | jq -r '.[] | select(.state == "Running") | .name' \
             | while read -r cs; do
