@@ -17,6 +17,7 @@ jobs:
     steps:
       - name: Verificar se deve executar (início)
         run: |
+          set -euo pipefail
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             if [ -n "${{ github.event.inputs.action }}" ] && [ "${{ github.event.inputs.action }}" != "start" ]; then
               echo "workflow_dispatch com action diferente de 'start' — pulando."
@@ -32,75 +33,29 @@ jobs:
             echo "Horário 23 UTC — iniciando job de start."
           fi
 
-      - name: Instalar gh e jq
+      - name: Instalar gh e jq (garantir CLI recente)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gh jq
+          set -euo pipefail
+          sudo apt-get update -y
+          # Try simple apt install first; fallback to official repo install if older package
+          if ! sudo apt-get install -y gh jq; then
+            echo "apt install failed or older gh; installing gh from official repository..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg >/dev/null 2>&1
+            sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update -y
+            sudo apt-get install -y gh jq
+          fi
+          gh --version
 
-      - name: Autenticar gh
+      - name: Autenticar gh (usar secret CODESPACE_PAT)
         env:
           CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
         run: |
-          if [ -z "${CODESPACE_PAT}" ]; then
+          set -euo pipefail
+          if [ -z "${CODESPACE_PAT:-}" ]; then
             echo "Segredo CODESPACE_PAT não definido. Abortando."
             exit 1
           fi
-          echo "${CODESPACE_PAT}" | gh auth login --with-token
-
-      - name: Ação Ligar Codespace
-        run: |
-          echo "Procurando codespace parado para este repositório (${{ github.repository }})..."
-          CODESPACE_TO_START=$(gh codespace list --repo "${{ github.repository }}" --json name,state | jq -r '.[] | select(.state != "Running") | .name' | head -n 1)
-          if [ -z "$CODESPACE_TO_START" ]; then
-            echo "Nenhum codespace parado encontrado para este repositório."
-          else
-            echo "Iniciando $CODESPACE_TO_START..."
-            gh codespace start -code "$CODESPACE_TO_START"
-          fi
-
-  stop-codespace:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Verificar se deve executar (parada)
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            if [ -n "${{ github.event.inputs.action }}" ] && [ "${{ github.event.inputs.action }}" != "stop" ]; then
-              echo "workflow_dispatch com action diferente de 'stop' — pulando."
-              exit 0
-            fi
-            echo "Execução manual detectada — procedendo com stop."
-          else
-            HOUR=$(date -u +%H)
-            if [ "$HOUR" != "05" ] && [ "$HOUR" != "5" ]; then
-              echo "Horário UTC atual: $HOUR — não é 05. Pulando job de stop."
-              exit 0
-            fi
-            echo "Horário 05 UTC — iniciando job de stop."
-          fi
-
-      - name: Instalar gh e jq
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gh jq
-
-      - name: Autenticar gh
-        env:
-          CODESPACE_PAT: ${{ secrets.CODESPACE_PAT }}
-        run: |
-          if [ -z "${CODESPACE_PAT}" ]; then
-            echo "Segredo CODESPACE_PAT não definido. Abortando."
-            exit 1
-          fi
-          echo "${CODESPACE_PAT}" | gh auth login --with-token
-
-      - name: Ação Parar Codespaces
-        run: |
-          echo "Procurando e parando todos os codespaces ativos..."
-          gh codespace list --json name,state | jq -r '.[] | select(.state == "Running") | .name' | \
-          while read -r codesa_name; do
-            if [ -n "$codesa_name" ]; then
-              echo "Parando $codesa_name..."
-              gh codespace stop -c "$codesa_name"
-            fi
-          done
-          echo "Processo de parada concluído."
+          # Print length (masked](#)*
+
