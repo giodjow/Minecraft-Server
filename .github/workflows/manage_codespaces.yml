@@ -92,7 +92,7 @@ jobs:
 
           echo "" >> $LOGFILE
           echo "===== Fim do Check =====" >> $LOGFILE
-EOF
+          EOF
           echo "Script iniciado com sucesso!"
 
   stop-codespace:
